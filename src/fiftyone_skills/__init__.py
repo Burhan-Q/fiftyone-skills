@@ -117,10 +117,21 @@ def download_skills_from_github(dest_dir: Path, repo: str = "voxel51/fiftyone-sk
         # Extract zip file with path validation
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             # Validate all paths before extraction to prevent path traversal attacks
+            import os
+            tmpdir_resolved = tmpdir_path.resolve()
+            
             for member in zip_ref.namelist():
                 # Normalize the path and ensure it doesn't escape the temp directory
                 member_path = (tmpdir_path / member).resolve()
-                if not str(member_path).startswith(str(tmpdir_path.resolve())):
+                
+                # Use os.path.commonpath for robust validation across platforms
+                try:
+                    common = Path(os.path.commonpath([tmpdir_resolved, member_path]))
+                    if common != tmpdir_resolved:
+                        print(f"Error: Malicious path detected in zip file: {member}", file=sys.stderr)
+                        sys.exit(1)
+                except ValueError:
+                    # On Windows, paths on different drives raise ValueError
                     print(f"Error: Malicious path detected in zip file: {member}", file=sys.stderr)
                     sys.exit(1)
             

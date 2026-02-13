@@ -91,7 +91,6 @@ def test_global_installation():
     
     # Import the module directly to test the path logic
     from fiftyone_skills import get_install_dir
-    from pathlib import Path
     
     # Test that global installation uses home directory
     install_dir = get_install_dir("global", "claude")
