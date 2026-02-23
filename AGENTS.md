@@ -219,6 +219,36 @@ This repository contains skills for computer vision workflows using FiftyOne and
 - `TUTORIAL-TEMPLATES.md` - Intermediate deep-dive templates
 - `RECIPE-TEMPLATES.md` - Quick practical recipe templates
 
+### FiftyOne Troubleshoot (`fiftyone-troubleshoot/`)
+
+**When to use:** User encounters a recurring FiftyOne problem: dataset disappeared, App won't open, changes not saving, MongoDB errors, video codec failures, notebook connectivity issues, missing plugins, or any common pain point.
+
+**Instructions:** Load the skill file at `skills/fiftyone-troubleshoot/SKILL.md`
+
+**CRITICAL safety rules enforced by this skill:**
+- NEVER delete a dataset without explicit user confirmation
+- NEVER directly manipulate MongoDB (no pymongo, no `db.drop_collection`, no raw shell commands)
+- NEVER modify FiftyOne config files silently
+
+**Issue categories covered:**
+- Dataset persistence (`persistent = True`)
+- App connection (`session.wait()`, Windows guard, port conflicts)
+- Unsaved changes (`sample.save()`, `dataset.save()`, `set_values()`)
+- Video codecs (`reencode_videos()`)
+- macOS open files limit (`ulimit -n 65536`)
+- Notebook / remote App (`proxy_url`, SSH forwarding)
+- MongoDB startup failures (disk space, process restart)
+- Missing plugins / operators (`download_plugin`, `enable_plugin`)
+- Delegated operator executor errors (launch App first)
+- Performance (views, `set_values`, indexes, batching)
+
+**Workflow summary:**
+1. Run diagnostic quick-check (version, datasets, fields, plugins)
+2. Match symptoms to the issue index table in the skill
+3. Explain the cause and proposed fix before applying
+4. Apply fix and verify resolution
+5. Add new issues to the skill as they are encountered
+
 ### FiftyOne Issue Triage (`fiftyone-issue-triage/`)
 
 **When to use:** User wants to triage GitHub issues, validate if bugs are fixed, categorize issue status, or generate standardized response messages.

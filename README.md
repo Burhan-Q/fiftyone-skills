@@ -48,6 +48,7 @@ Skills bridge the gap between natural language and FiftyOne's 80+ operators, pro
 | 📝 [**Code Style**](skills/fiftyone-code-style/SKILL.md) | Write Python code following FiftyOne's official conventions | — |
 | 📓 [**Create Notebook**](skills/fiftyone-create-notebook/SKILL.md) | Create Jupyter notebooks: getting-started guides, tutorials, recipes, ML pipelines | — |
 | 🏷️ [**Issue Triage**](skills/fiftyone-issue-triage/SKILL.md) | Triage GitHub issues: validate status, categorize, generate responses | — |
+| 🔧 [**Troubleshoot**](skills/fiftyone-troubleshoot/SKILL.md) | Fix common issues: dataset persistence, App connection, MongoDB errors, codecs, performance | — |
 
 ## Quick Start
 
