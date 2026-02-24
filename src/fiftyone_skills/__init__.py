@@ -35,7 +35,9 @@ def get_package_skills_dir() -> Path:
     module_dir = Path(__file__).parent
     for parent in module_dir.parents:
         skills_dir = parent / "skills"
-        if skills_dir.exists() and (skills_dir / "fiftyone-find-duplicates").exists():
+        if skills_dir.is_dir() and any(
+            d.is_dir() and d.name.startswith("fiftyone-") for d in skills_dir.iterdir()
+        ):
             return skills_dir
 
     raise FileNotFoundError(
@@ -55,18 +57,17 @@ def get_install_dir(env: str, agent: str | None = None) -> Path:
     else:
         raise ValueError(f"Invalid env value: {env}. Must be 'local' or 'global'")
 
-    if agent and agent.lower() != "none":
-        # Install to agent-specific directory
+    if agent:
         agent_key = agent.lower()
-        if agent_key not in AGENT_DIRS:
-            raise ValueError(
-                f"Invalid agent: {agent}. "
-                f"Must be one of: {', '.join(AGENT_DIRS.keys())}, None"
-            )
-        return base_dir / AGENT_DIRS[agent_key]
-    else:
-        # Install to .agents/skills/ directory
-        return base_dir / ".agents" / "skills"
+        if agent_key != "none":
+            if agent_key not in AGENT_DIRS:
+                raise ValueError(
+                    f"Invalid agent: {agent}. "
+                    f"Must be one of: {', '.join(AGENT_DIRS.keys())}, None"
+                )
+            return base_dir / AGENT_DIRS[agent_key]
+
+    return base_dir / ".agents" / "skills"
 
 
 def copy_skills(src_dir: Path, dest_dir: Path) -> int:
@@ -102,7 +103,7 @@ def _git_blob_sha(path: Path) -> str:
 def _fetch_json(url: str) -> list[dict]:
     """Fetch JSON from a URL using urllib."""
     req = urllib.request.Request(url, headers={"User-Agent": "fiftyone-skills-cli"})
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read().decode())
 
 
@@ -123,7 +124,11 @@ def _sync_directory(
             if dest.exists() and _git_blob_sha(dest) == entry["sha"]:
                 skipped += 1
                 continue
-            urllib.request.urlretrieve(entry["download_url"], dest)
+            req = urllib.request.Request(
+                entry["download_url"], headers={"User-Agent": "fiftyone-skills-cli"}
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                dest.write_bytes(resp.read())
             downloaded += 1
         elif entry["type"] == "dir":
             d, s = _sync_directory(
@@ -196,7 +201,7 @@ def install_skills(env: str, agent: str | None = None, update: bool = False) -> 
             sys.exit(1)
 
         print(f"\nInstalling skills from package to {install_dir}...")
-        print("\nInstalling skills:")
+        print("Installing skills:")
         skill_count = copy_skills(skills_dir, install_dir)
         print(f"\n✓ Successfully installed {skill_count} skills to {install_dir}")
 
@@ -256,7 +261,7 @@ Examples:
 
     # Parse key=value arguments
     config = {}
-    valid_keys = {"env", "agent"}
+    valid_keys = ("env", "agent")
 
     for item in args.config:
         if "=" in item:
@@ -282,19 +287,6 @@ Examples:
 
     env = config["env"]
     agent = config.get("agent")
-
-    # Validate env value
-    if env not in ["local", "global"]:
-        print(f"Error: env must be 'local' or 'global', got '{env}'", file=sys.stderr)
-        sys.exit(1)
-
-    # Validate agent value
-    if agent and agent.lower() not in list(AGENT_DIRS.keys()) + ["none"]:
-        print(
-            f"Error: agent must be one of: {', '.join(AGENT_DIRS.keys())}, None; got '{agent}'",
-            file=sys.stderr,
-        )
-        sys.exit(1)
 
     try:
         install_skills(env, agent, update=args.update)
