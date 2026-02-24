@@ -146,6 +146,7 @@ The installer copies all skill directories to your chosen location:
 - `fiftyone-code-style/` - FiftyOne code style guide
 - `fiftyone-voodo-design/` - VOODO UI design system
 - `fiftyone-issue-triage/` - GitHub issue triage
+- `fiftyone-create-notebook/` - Jupyter notebook creation
 
 Each skill directory contains:
 - `SKILL.md` - Main skill documentation and instructions

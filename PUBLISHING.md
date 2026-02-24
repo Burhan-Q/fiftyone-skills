@@ -140,9 +140,9 @@ Add your PyPI API token to repository secrets as `PYPI_TOKEN`.
 
 ### Build fails with "skills not found"
 
-Ensure skills directory is in the right location:
+Ensure the skills directory exists at the repository root:
 ```bash
-ls -la src/fiftyone_skills/skills/
+ls -la skills/
 ```
 
 ### Package is too large
@@ -153,13 +153,15 @@ The package includes all skill markdown files. This is intentional to allow offl
 
 Make sure the package structure matches:
 ```
+skills/
+  fiftyone-*/
+    SKILL.md
 src/
   fiftyone_skills/
     __init__.py
-    skills/
-      fiftyone-*/
-        SKILL.md
 ```
+
+Skills are bundled as wheel data and installed to `sysconfig.get_path("data")/skills/`.
 
 ## Notes
 
