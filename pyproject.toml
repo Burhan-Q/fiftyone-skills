@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Expert workflows for computer vision powered by AI assistants"
 readme = "README.md"
 authors = [
-    { name = "Voxel51", email = "info@voxel51.com" }
+    { name = "Burhan-Q", email = "burhan@voxel51.com" }
 ]
 requires-python = ">=3.8"
 dependencies = []
