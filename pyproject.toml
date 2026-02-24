@@ -37,3 +37,12 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 data = { data = "skills" }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
