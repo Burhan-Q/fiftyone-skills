@@ -24,6 +24,22 @@ AGENT_DIRS = {
     "copilot": ".github/copilot/skills",
 }
 
+CLI_DESCRIPTION = "Install FiftyOne Skills for AI assistants"
+CLI_EXAMPLES = """
+Examples:
+  # Install locally for Claude Code
+  fiftyone-skills env=local agent=claude
+
+  # Install globally for Cursor
+  fiftyone-skills env=global agent=cursor
+
+  # Install locally to .agents/skills/ directory
+  fiftyone-skills env=local agent=None
+
+  # Update skills from GitHub
+  fiftyone-skills env=local agent=claude --update
+"""
+
 
 def _setup_logging() -> None:
     """Configure logging for CLI output: INFO to stdout, WARNING+ to stderr."""
@@ -233,22 +249,9 @@ def main() -> None:
     _setup_logging()
 
     parser = argparse.ArgumentParser(
-        description="Install FiftyOne Skills for AI assistants",
+        description=CLI_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Install locally for Claude Code
-  fiftyone-skills env=local agent=claude
-
-  # Install globally for Cursor
-  fiftyone-skills env=global agent=cursor
-
-  # Install locally to .agents/skills/ directory
-  fiftyone-skills env=local agent=None
-
-  # Update skills from GitHub
-  fiftyone-skills env=local agent=claude --update
-        """,
+        epilog=CLI_EXAMPLES,
     )
 
     parser.add_argument(
