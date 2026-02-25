@@ -56,6 +56,11 @@ python -m fiftyone.server.main
 # Terminal 2: Browser at localhost:5151 (JS logs in DevTools console)
 ```
 
+```bash
+fiftyone app debug          # logs printed to shell; use with a dataset:
+fiftyone app debug <dataset-name>
+```
+
 For automated iteration, use Playwright e2e tests:
 ```bash
 npx playwright test
@@ -325,16 +330,11 @@ def register(p):
 | Network requests | Browser DevTools (F12 → Network) |
 | Operator errors | Operator browser in FiftyOne App |
 
-### Running Server Separately (Recommended for Development)
-
-To see Python plugin logs, run the server and app separately:
+### Running in Debug Mode (Recommended for Development)
 
 ```bash
-# Terminal 1: Run FiftyOne server (shows Python logs)
-python -m fiftyone.server.main
-
-# Terminal 2: Access the app in browser
-# Logs from print() and logging will appear in Terminal 1
+fiftyone app debug                    # server logs printed to shell
+fiftyone app debug <dataset-name>     # with a dataset pre-loaded
 ```
 
 ### Python Debugging
@@ -400,5 +400,8 @@ result = foo.execute_operator(operator_uri, ctx, **params)
 ## Resources
 
 - [Plugin Development Guide](https://docs.voxel51.com/plugins/developing_plugins.html)
+- [Developing Panels](https://docs.voxel51.com/plugins/developing_plugins.html#developing-panels)
+- [Developing JS Plugins](https://docs.voxel51.com/plugins/developing_plugins.html#developing-js-plugins)
+- [Panel Examples (reference implementations)](https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/panel-examples/__init__.py)
 - [FiftyOne Plugins Repo](https://github.com/voxel51/fiftyone-plugins)
 - [Operator Types API](https://docs.voxel51.com/api/fiftyone.operators.types.html)
