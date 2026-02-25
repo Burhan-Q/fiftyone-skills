@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Burhan-Q", email = "burhan@voxel51.com" }
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = []
 license = { text = "Apache-2.0" }
 keywords = ["fiftyone", "computer-vision", "ai", "skills", "workflows"]
@@ -16,8 +16,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
