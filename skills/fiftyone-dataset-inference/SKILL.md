@@ -103,6 +103,12 @@ execute_operator(operator_uri="@org/plugin/operator", params={...})
 
 **Path C — Remote / externally registered model**
 
+Check registered remote sources first:
+```python
+import fiftyone.zoo as foz
+foz.list_zoo_model_sources()
+```
+
 If the model comes from a registered remote source (GitHub repo registered via `foz.register_zoo_model_source()`):
 ```python
 execute_operator(
@@ -113,12 +119,6 @@ execute_operator(
         "label_field": "predictions"
     }
 )
-```
-
-Check registered remote sources first:
-```python
-import fiftyone.zoo as foz
-foz.list_zoo_model_sources()
 ```
 
 ### Step 5: View Results
