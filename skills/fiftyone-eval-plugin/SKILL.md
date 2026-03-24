@@ -10,7 +10,7 @@ description: Evaluates FiftyOne plugins for quality, security, and agent-readine
 **ALWAYS follow these rules:**
 
 ### 1. Read the entire plugin before judging
-Read every Python file, every JavaScript file, the manifest, and any config files. Never assess based on a partial read.
+Read every source and configuration file of the plugin. Common file extensions: `.py`, `.ts`, `.tsx`, `.js`, `.yaml`, `.yml`, and `.json`. Never construct an assessment of a plugin without first reading every line of every source file.
 
 ### 2. Security first
 Check for dangerous patterns before anything else. A plugin with perfect code quality but a hidden `subprocess.call()` sending data to an external server is a critical failure.
