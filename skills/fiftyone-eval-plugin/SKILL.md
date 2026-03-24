@@ -77,7 +77,7 @@ glob.glob        # File discovery — what directories is it scanning?
 
 **Acceptable:** Reading/writing within FiftyOne dataset directories, plugin directory, temp files.
 **Suspicious:** Reading `~/.ssh/`, `~/.aws/`, `~/.config/`, `/etc/`, or any path outside FiftyOne scope.
-**Critical:** Writing to system directories or reading credential files.
+**Critical:** Writing to system directories or reading credential files. Plugin properly leverages and handles environment variables 
 
 **2.2 Network access — scan for:**
 ```python
@@ -90,8 +90,8 @@ aiohttp          # Async HTTP
 httpx            # Same
 ```
 
-**Acceptable:** Calls to documented APIs the plugin integrates with (e.g., annotation backend, model API) that match declared secrets.
-**Suspicious:** Calls to unknown endpoints, IP addresses, or domains not related to the plugin's stated purpose.
+**Acceptable:** Calls to documented APIs and services the plugin integrates with (e.g., annotation backend, model API) that match declared secrets.
+**Suspicious:** Calls to unknown external endpoints, IP addresses, or domains not directly related to the plugin's stated purpose or related services.
 **Critical:** Data being sent to external servers that includes dataset content, user info, or environment variables.
 
 **2.3 Command execution — scan for:**
@@ -106,7 +106,7 @@ __import__       # Dynamic imports
 ```
 
 **Acceptable:** Running specific, documented external tools (e.g., `ffmpeg` for video processing in an I/O plugin).
-**Suspicious:** Running arbitrary shell commands, especially with user-provided input.
+**Suspicious:** Running arbitrary shell commands, especially quietly or in an obfuscated manner, with user-provided input.
 **Critical:** `exec()` or `eval()` on any data that comes from outside the plugin.
 
 **2.4 Environment variable access:**
@@ -123,7 +123,8 @@ os.getenv        # Reading specific env vars — which ones?
 **2.5 Data exfiltration patterns — check for combinations:**
 - Reads a file + makes a network call in the same function → suspicious
 - Reads env vars + makes a network call → suspicious
-- Accesses dataset samples + writes to a non-FiftyOne path → suspicious
+- Accesses dataset samples and/or writes to a non-FiftyOne path → suspicious
+- Patterns allowing arbitrary path traversal or relative path access
 - Base64 encoding + network call → highly suspicious
 
 **2.6 Dependency supply chain:**
