@@ -233,7 +233,7 @@ Check the plugin follows FiftyOne conventions.
 Check that an LLM agent can effectively use this plugin's tools.
 
 **7.1 Tool naming:**
-- Operator names describe what they do (`compute_embeddings`, not `run_pipeline_v2`)
+- All operator names, that are **not** unlisted `unlisted=True`, describe what they do (`compute_embeddings`, not `run_pipeline_v2`)
 - Names are distinct from builtin operators (no confusion with `@voxel51/*` tools)
 
 **7.2 Tool descriptions:**
