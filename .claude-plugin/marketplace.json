@@ -91,6 +91,11 @@
       "source": "./skills/fiftyone-generate-data-lens-connector",
       "skills": "./",
       "description": "Generate a Data Lens connector from an external database schema. Use when users want to connect an external data source (PostgreSQL, BigQuery, Databricks, MySQL, SQLite, etc.) to FiftyOne Data Lens, create a DataLensOperator from a CREATE TABLE statement or column list, or build a plugin that lets users browse and import data from their database through the FiftyOne App."
+    },
+      "name": "fiftyone-eval-plugin",
+      "source": "./skills/fiftyone-eval-plugin",
+      "skills": "./",
+      "description": "Evaluates FiftyOne plugins for quality, security, and agent-readiness. Use when reviewing a plugin before installation, auditing an existing plugin, validating a plugin you just built, or assessing community plugins for safety. Checks manifest integrity, security risks (filesystem access, network calls, command execution, data exfiltration), schema quality, risk classification, code conventions, and agent discoverability. Produces a structured report with scores and actionable recommendations."
     }
   ]
 }
