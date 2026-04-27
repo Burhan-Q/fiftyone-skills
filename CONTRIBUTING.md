@@ -19,7 +19,7 @@ Both follow the same workflow below.
 2. **Check open issues** — Someone may already be working on it, or there may be useful context in an existing issue
 3. **Look at the roadmap** — See [GitHub Milestones](https://github.com/voxel51/fiftyone-skills/milestones) and issues labeled [`roadmap`](https://github.com/voxel51/fiftyone-skills/labels/roadmap) for planned work
 
-No approval needed — just submit your PR when it's ready.
+No permission needed to start contributing — just submit your PR when it's ready.
 
 ## Contribution Workflow
 
@@ -147,6 +147,7 @@ Before submitting, verify your skill:
 - [ ] Workflow has code examples at each step
 - [ ] Troubleshooting covers the most common failure modes
 - [ ] Tested end-to-end with at least one AI assistant
+- [ ] No inclusion of device-specific references or local-only file pointers
 
 ## Naming Conventions
 

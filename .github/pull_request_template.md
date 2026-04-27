@@ -18,7 +18,7 @@
 
 <!-- Complete this section if you're adding or modifying a skill -->
 
-- [ ] `SKILL.md` has YAML frontmatter with `name` and `description`
+- [ ] `SKILL.md` has YAML frontmatter with, `name` and `description` at least and all keys are universally valid
 - [ ] Key Directives section is present (ALWAYS/NEVER rules)
 - [ ] Complete Workflow section with code examples at each step
 - [ ] Troubleshooting section covers common failure modes

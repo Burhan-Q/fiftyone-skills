@@ -61,7 +61,7 @@ body:
         - Gemini CLI
         - Goose
         - Amp
-        - Other
+        - Other (specify in "Details" section)
     validations:
       required: true
 
