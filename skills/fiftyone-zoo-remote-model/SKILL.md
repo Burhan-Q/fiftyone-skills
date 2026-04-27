@@ -1,56 +1,67 @@
 ---
 name: fiftyone-zoo-remote-model
-description: Build FiftyOne remote model zoo integrations that work with register_zoo_model_source, multi-worker DataLoader, and dataset.apply_model. Covers file structure, manifest, class hierarchy, DataLoader pickle compatibility, label return types, and common pitfalls.
+description: Use when integrating a model into FiftyOne's remote model zoo — detection, classification, segmentation, embedding, keypoint, or vision-language (VLM) models loaded via `register_zoo_model_source` and `load_zoo_model`, then applied with `dataset.apply_model`. Also for debugging zoo registration, `manifest.json` issues, custom `fom.Model` / `TorchModelMixin` subclasses, DataLoader pickle errors, or worker `ModuleNotFoundError` from spawned DataLoader workers.
 allowed-tools: Read, Grep, Glob, Agent, WebFetch, Write, Edit
 ---
 
 # FiftyOne Remote Model Zoo — Integration Guide
 
-Use this skill when building a new FiftyOne model zoo integration intended for remote registration via `foz.register_zoo_model_source()`, or when debugging issues with an existing one.
+## When to use
 
-Reference documentation:
-- FiftyOne remote model zoo docs: https://docs.voxel51.com/model_zoo/remote.html
-- [MANIFEST.md](references/MANIFEST.md) — manifest.json format and `__init__.py` entry point
-- [MODEL-CLASS.md](references/MODEL-CLASS.md) — Config/Model class hierarchy, required properties, predict/predict_all
-- [DATALOADER.md](references/DATALOADER.md) — Multi-worker pickle compatibility, macOS restriction, platform-aware num_workers
-- [LABEL-TYPES.md](references/LABEL-TYPES.md) — Label return types, coordinate normalization
+Triggers: new remote zoo source; debugging an existing one; registration "succeeds" but model not loadable; `ModuleNotFoundError` from DataLoader workers; custom `fom.Model` / `TorchModelMixin`; VLM/structured-output integrations.
 
-## File Structure
+Not this skill: plugins, operators, panels, brain methods. Route via Phase 0.
 
-A remote model zoo source is a directory containing:
+## Phase 0 — Confirm the integration surface
 
-```
-my-model/
-├── __init__.py       # Exports: download_model, load_model, resolve_input (all optional)
-├── zoo.py            # Model classes, configs, inference logic
-├── manifest.json     # Model metadata for zoo registration (REQUIRED)
-└── README.md         # Usage docs (optional)
-```
+| User wants to… | Surface | Skill |
+|---|---|---|
+| Apply a model (`dataset.apply_model`) | Remote zoo model | this skill |
+| UI panels, buttons, side-effects | Plugin / operator | `fiftyone-develop-plugin` |
+| Embeddings, similarity, uniqueness | Brain method | brain docs |
 
-See [references/MANIFEST.md](references/MANIFEST.md) for manifest.json format and `__init__.py` exports. See [MODEL-CLASS.md](references/MODEL-CLASS.md) for the zoo.py class hierarchy and predict/predict_all patterns.
+**Required output**: one-line confirmation. Example: "Zoo model integration because user wants `dataset.apply_model(model)` to write predictions." If you cannot write that line, stop.
 
-## Common Pitfalls
+## Phase 1 — Scaffold
 
-1. **Missing `name` in manifest.json** — FiftyOne silently skips manifests without a top-level `name` field. The remote source registration appears to succeed but the model isn't found.
+Copy `template/`:
 
-2. **Custom picklable objects without platform-aware num_workers** — On macOS, custom classes from `zoo.py` in the DataLoader pickle cause `ModuleNotFoundError` in workers. Either use FiftyOne's built-in classes or gate `num_workers` on `sys.platform`. See [DATALOADER.md](references/DATALOADER.md).
+- `manifest.json` — top-level `name` required (silent skip if missing).
+- `__init__.py` — exports `download_model`, `load_model`, optional `resolve_input`. Relative imports: `from .zoo import ...`.
+- `zoo.py` — config + model class.
 
-3. **Returning dicts from image predict_all** — Creates `label_field_key` prefixed fields instead of storing under `label_field` directly. Breaks nested field paths. See [LABEL-TYPES.md](references/LABEL-TYPES.md).
+## Phase 2 — Implement
 
-4. **Wrong coordinate system** — VLMs often use non-standard coordinate orders or scales. Always verify the model's coordinate convention from concrete spatial examples in model documentation, not assumptions.
+- Class hierarchy, properties, three-input predict dispatch → [MODEL-CLASS.md](references/MODEL-CLASS.md).
+- Label return types, single-`fo.Label` rule, coordinates → [LABEL-TYPES.md](references/LABEL-TYPES.md).
+- DataLoader pickle, worker import resolution → [DATALOADER.md](references/DATALOADER.md).
+- **VLM / generative-structured-output** (uses `generate()` with prompts/schemas) → also [VLM-PATTERNS.md](references/VLM-PATTERNS.md).
 
-5. **Model card vs library docs** — HuggingFace model cards may show incorrect API usage (wrong model class, etc.). Always verify against the library's official documentation.
+## Phase 3 — Validate
 
-6. **Thinking mode + tool calling** — Models with thinking/reasoning modes may exhaust generation tokens before producing tool calls. Default to thinking OFF for structured operations.
+- [ ] `manifest.json` has top-level `name`.
+- [ ] `__init__.py` uses relative imports.
+- [ ] Image ops return single `fo.Label` (dicts only for video frame-level, integer keys).
+- [ ] One-known-example coordinate check passed.
+- [ ] `dataset.apply_model(model)` runs with default `num_workers`.
+- [ ] On macOS: no `ModuleNotFoundError` from workers.
 
-## Quick Checklist
+On failure, see [DEBUGGING-PRINCIPLES.md](references/DEBUGGING-PRINCIPLES.md).
 
-- [ ] `manifest.json` has top-level `name` field
-- [ ] `__init__.py` uses relative imports (`from .zoo import ...`)
-- [ ] Model inherits `fom.Model`, `fom.SamplesMixin`, `SupportsGetItem`, `TorchModelMixin`
-- [ ] `collate_fn` and `GetItem` use FiftyOne built-ins, OR custom classes with platform-aware `num_workers`
-- [ ] If using custom picklable objects, `num_workers=0` on macOS (`sys.platform == "darwin"`)
-- [ ] `predict_all` handles PIL Image, filepath string, and dict inputs
-- [ ] Image operations return single `fo.Label` instance, not dict
-- [ ] Coordinates normalized to `[0, 1]` range
-- [ ] Extra metadata stored as dynamic attributes on Labels
+## Universal principles
+
+- **Framework-first.** Use FiftyOne's existing classes before defining your own. Why: framework classes resolve to importable modules; replacements re-introduce solved problems.
+- **Worker-pickle constraint.** Objects pickled across a DataLoader worker boundary must resolve to a module the worker can import. Why: remote zoo sources load via `importlib.util.spec_from_file_location` and are not on `sys.path` of spawned workers.
+- **Reference implementations need verification.** A pattern copied from another zoo source is not guaranteed correct. Why: at least one widely-copied VLM reference silently breaks under multi-worker.
+- **Schema compliance ≠ correctness.** A schema-conforming model is not necessarily producing correct values. Why: schema-following models echo your wrong field names back at you.
+- **Read specs, don't patch parsers.** When a parser keeps breaking, find the format spec before iterating. Why: each patch shifts the failure to a different malformation; the cycle is unbounded.
+- **Bounded repair scope.** Repair the few common malformations and stop. Why: unbounded repair masks model-quality regressions.
+
+## Quick reference index
+
+- [MANIFEST.md](references/MANIFEST.md) — schema, entry points, idempotent `download_model`.
+- [MODEL-CLASS.md](references/MODEL-CLASS.md) — hierarchy, properties, predict dispatch.
+- [DATALOADER.md](references/DATALOADER.md) — worker pickle WHY, primitives, wrong fixes that look right.
+- [LABEL-TYPES.md](references/LABEL-TYPES.md) — return types, coordinate normalization.
+- [DEBUGGING-PRINCIPLES.md](references/DEBUGGING-PRINCIPLES.md) — six rules with failure modes and diagnostic moves.
+- [VLM-PATTERNS.md](references/VLM-PATTERNS.md) — tool calling, generation budget, thinking, vision tokens, delimiters, multi-tier parser, coordinate quirks.

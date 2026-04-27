@@ -4,6 +4,8 @@
 
 **Must have a top-level `name` field.** FiftyOne skips manifests without it. The `name` determines the subdirectory under `model_zoo_dir` and the Python module name.
 
+> **First check on silent failure.** If `register_zoo_model_source` "succeeds" but `load_zoo_model` cannot find the model, verify the top-level `name` is present. Missing-`name` is a silent skip — frequently replicated bug.
+
 ```json
 {
     "name": "my-org/my-model",
@@ -33,7 +35,8 @@ Exports functions called by FiftyOne's zoo machinery. Uses relative imports for 
 from .zoo import MyImageModel, MyImageModelConfig, MyVideoModel, MyVideoModelConfig
 
 def download_model(model_name: str, model_path: str) -> None:
-    """Download model weights to model_path."""
+    """Download model weights to model_path. MUST be idempotent — safe to
+    call when weights already exist at model_path (no-op or re-verify)."""
     ...
 
 def load_model(model_name: str | None = None, model_path: str | None = None, **kwargs) -> MyImageModel | MyVideoModel:

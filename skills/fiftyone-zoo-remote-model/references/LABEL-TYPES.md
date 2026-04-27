@@ -16,99 +16,62 @@
 | Semantic segmentation | `fo.Segmentation` | `fo.Segmentation(mask=mask_array)` |
 
 **Key details:**
-- Bounding boxes use `[x, y, width, height]` in `[0, 1]` normalized coordinates
-- Keypoints use `[[x, y], ...]` in `[0, 1]` normalized coordinates
-- Text responses (VQA, caption, OCR) are wrapped in `fo.Classification(label=text)` — do NOT return raw strings
+- Bounding boxes: `[x, y, width, height]` in `[0, 1]`; keypoints: `[[x, y], ...]` in `[0, 1]`
+- Text responses (VQA, caption, OCR) wrapped in `fo.Classification(label=text)` — do NOT return raw strings
 
 ### Video Operations (frame-level)
 
 Video models may return a **dict** from `predict_all()`, but ONLY when the dict uses **integer frame numbers** as keys. FiftyOne's `add_labels` detects this and merges into `sample.frames`.
 
 ```python
-# Sample-level labels (simple string/label) — return single Label or dict with string keys
-{"summary": "A person walks across a park"}
+# Frame-level — dict with integer keys
+{1: {"objects": fo.Detections(...)}, 15: {"objects": fo.Detections(...)}}
 
-# Frame-level labels — dict with integer keys
-{
-    1: {"objects": fo.Detections(detections=[...])},
-    15: {"objects": fo.Detections(detections=[...])},
-}
-
-# Mixed sample + frame-level — dict with both string and integer keys
-{
-    "summary": "A person walks across a park",
-    1: {"objects": fo.Detections(detections=[...])},
-}
+# Mixed sample + frame-level — string and integer keys
+{"summary": "A person walks", 1: {"objects": fo.Detections(...)}}
 ```
 
-Video-specific label types:
-- `fo.TemporalDetection` / `fo.TemporalDetections` — time-range events on the full video
-- Frame-level `fo.Detections` — per-frame bounding boxes (stored in `sample.frames[N]`)
+Video-specific types: `fo.TemporalDetection` / `fo.TemporalDetections` (time-range events); frame-level `fo.Detections` (stored in `sample.frames[N]`).
 
 ## Storing Metadata as Dynamic Attributes
 
-Do NOT create wrapper dicts to store extra data alongside labels. Instead, use **dynamic attributes** on the Label instance itself:
+Do NOT wrap labels in a dict. Use **dynamic attributes** on the Label itself:
 
 ```python
-# WRONG — returns a dict, breaks nested label_field
+# WRONG — dict return triggers silent field-splitting (see below)
 def _parse_output(self, text, reasoning):
-    return {"detections": fo.Detections(...), "raw": text, "reasoning": reasoning}
+    return {"label": "cat", "reasoning": reasoning}
 
-# CORRECT — returns single Label, metadata as dynamic attributes
+# CORRECT — single Label with dynamic attribute
 def _parse_output(self, text, reasoning):
-    dets = fo.Detections(detections=[...])
-    if reasoning:
-        for det in dets.detections:
-            det["reasoning"] = reasoning
-    return dets
+    cls = fo.Classification(label="cat")
+    cls["reasoning"] = reasoning
+    return cls
 ```
 
-Dynamic attributes can be set on any Label subclass:
-```python
-label = fo.Classification(label="cat")
-label["confidence_raw"] = 0.95
-label["reasoning"] = "The image shows pointed ears and whiskers..."
-label["model_name"] = "gemma-4-E4B-it"
+### The silent `predictions_<key>` failure
+
+If the model returns `{"label": "cat", "reasoning": "..."}` and the user calls `dataset.apply_model(model, label_field="predictions")`, FiftyOne does NOT raise. It silently splits the dict into top-level fields:
+
+```
+sample.predictions_label       # fo.Classification(label="cat")
+sample.predictions_reasoning   # "..." (string field)
 ```
 
-Users access them via:
-```python
-sample.predictions["reasoning"]       # on Classification
-sample.predictions.detections[0]["reasoning"]  # on individual Detection
-```
+There is no `sample.predictions` field. Downstream `sample.predictions.label` fails with `AttributeError` — `predictions` is a Classification at `predictions_label`, not at `predictions`. Grep signature: `predictions_<key>`. Fix: return a single Label with `label["reasoning"] = ...`.
 
-## How FiftyOne's add_labels Works
+Users access dynamic attributes via `sample.predictions["reasoning"]` or `sample.predictions.detections[0]["reasoning"]`.
 
-Understanding the dispatch logic in `Sample.add_labels()`:
+## `add_labels` Dispatch (reference)
 
-```python
-labels = model.predict(img)
+`Sample.add_labels()` branches on the return value:
 
-if isinstance(labels, dict):
-    if all keys are integers:
-        → Frame-level labels: merge into sample.frames
-    elif any key is an integer:
-        → Mixed: string keys become sample fields, int keys become frame fields
-    else:
-        → Multiple sample fields: each key maps to label_field + "_" + key
-elif labels is a Label instance:
-    → Single field: stored directly in label_field
-```
-
-The `label_field` key mapping for dicts:
-```python
-# When label_field is a string (e.g., "predictions"):
-key_fn = lambda k: "predictions_" + k
-# {"detections": ..., "raw": ...} → sample.predictions_detections, sample.predictions_raw
-
-# When label_field is a dict:
-key_fn = lambda k: label_field.get(k, k)
-# label_field={"detections": "preds"} → sample.preds
-
-# When label_field is None:
-key_fn = lambda k: k
-# {"detections": ...} → sample.detections
-```
+| Return | Stored as |
+|--------|-----------|
+| `Label` instance | Single field at `label_field` |
+| Dict, all integer keys | Frame-level, merged into `sample.frames` |
+| Dict, mixed int + string keys | String → sample fields, int → frame fields |
+| Dict, all string keys | Each key → `label_field + "_" + key` (the silent-split failure above) |
 
 ## Coordinate Normalization
 
@@ -118,31 +81,19 @@ FiftyOne uses `[0, 1]` normalized coordinates for all spatial labels:
 - **Keypoints**: `[[x, y], ...]`
 - **Polylines**: `[[[x, y], ...], ...]`
 
-If a model outputs coordinates in pixel space or 0-1000 scale, normalize before creating labels:
+If a model outputs pixel space or 0-1000 scale, normalize before creating labels:
 ```python
-# From 0-1000 scale (common in VLMs like Gemma4, Qwen3.5)
-x1, y1, x2, y2 = raw_bbox
-fo.Detection(
-    label=label,
-    bounding_box=[x1/1000, y1/1000, (x2-x1)/1000, (y2-y1)/1000],
-)
-
 # From pixel coordinates
-fo.Detection(
-    label=label,
-    bounding_box=[x/img_w, y/img_h, w/img_w, h/img_h],
-)
+fo.Detection(label=label, bounding_box=[x/img_w, y/img_h, w/img_w, h/img_h])
 ```
+
+For VLM-specific quirks (PaLI `[y, x, h, w]` order, 0–1000 scales), see `VLM-PATTERNS.md`.
 
 ## Quick Checklist
 
-When implementing `predict()` / `predict_all()` for a FiftyOne zoo model:
-
-- [ ] Image operations return a single `fo.Label` subclass, not a dict
-- [ ] Text outputs (VQA, caption, OCR) wrapped in `fo.Classification(label=text)`
-- [ ] Detection boxes are `[x, y, w, h]` in `[0, 1]` range
-- [ ] Keypoints are `[[x, y], ...]` in `[0, 1]` range
-- [ ] Extra metadata stored as dynamic attributes on the Label, not in wrapper dicts
-- [ ] Video frame-level results use integer keys in the return dict
-- [ ] `collate_fn` inherited from `TorchModelMixin` (not overridden) — see `/fiftyone-zoo-remote-model` skill for details
-- [ ] `build_get_item` returns `ImageGetItem(raw_inputs=True)` — no custom `GetItem` subclass in zoo module
+- [ ] Image ops return a single `fo.Label` subclass, not a dict
+- [ ] Text outputs wrapped in `fo.Classification(label=text)`
+- [ ] Detection boxes `[x, y, w, h]` in `[0, 1]`; keypoints `[[x, y], ...]` in `[0, 1]`
+- [ ] Extra metadata as dynamic attributes on the Label, not wrapper dicts
+- [ ] Video frame-level results use integer keys
+- [ ] `collate_fn` inherited from `TorchModelMixin`; `build_get_item` returns `ImageGetItem(raw_inputs=True)`

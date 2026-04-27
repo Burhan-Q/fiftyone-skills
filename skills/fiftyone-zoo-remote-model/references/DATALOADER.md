@@ -1,95 +1,70 @@
 # DataLoader Multi-Worker Pickle Compatibility
 
-FiftyOne's `dataset.apply_model()` uses a PyTorch DataLoader with `num_workers > 0` for models that inherit `SupportsGetItem` or `TorchModelMixin`. Two objects are pickled for workers: the `collate_fn` and the `GetItem` from `build_get_item()`.
+`dataset.apply_model()` runs a PyTorch DataLoader for any model inheriting `SupportsGetItem` or `TorchModelMixin`. The `collate_fn` and the `GetItem` instance are pickled across the worker boundary. If either resolves to a module the worker cannot import, you get `ModuleNotFoundError` from the spawned worker.
 
-## macOS Pickle Restriction
+## 1. Why workers can't import your module
 
-On macOS, DataLoader workers use `spawn` by default. FiftyOne loads remote zoo sources via `importlib.util.spec_from_file_location`, registering the module in the parent's `sys.modules` only. Spawned workers on macOS CANNOT import the zoo source module, so **custom classes defined in `zoo.py` will cause `ModuleNotFoundError` when pickled for workers on macOS.**
+FiftyOne loads remote zoo sources via `importlib.util.spec_from_file_location`. The module is registered in the **parent's** `sys.modules`, but its directory is **never** added to `sys.path`.
 
-On Linux and Windows, `fork`-based workers inherit the parent's `sys.modules`, so custom `collate_fn` and `GetItem` subclasses defined in `zoo.py` work normally with `num_workers > 0`.
+| Platform | Worker start | Result |
+|---|---|---|
+| macOS | `spawn` (default) | Fresh interpreter; no inherited `sys.modules`; cannot import zoo source. |
+| Linux, Python 3.14+ POSIX | `spawn`/`forkserver` | Same as macOS. |
+| Linux (current default) | `fork` | Inherits parent `sys.modules`; **silently masks the bug**. |
 
-## Platform-Aware num_workers
+A zoo source that "works on Linux" can fail on macOS or after a Python version bump. Concrete signature:
 
-To support custom picklable objects cross-platform, gate `num_workers` on the platform:
-
-```python
-import sys
-
-num_workers = user_provided_num_workers  # or the default
-dataset.apply_model(
-    model,
-    label_field="predictions",
-    num_workers=num_workers if sys.platform != "darwin" else 0,
-)
+```
+ModuleNotFoundError: No module named 'fiftyone.zoo.models.<your-source>'
 ```
 
-Setting `num_workers=0` on macOS runs inference in the main process, avoiding the pickle issue entirely while still allowing custom `GetItem` and `collate_fn` on other platforms.
+## 2. The pickle-resolution rule
 
-## Option A: Use FiftyOne Built-ins (works everywhere)
+Pickle serializes objects by **qualified module path**, not by value. If a `collate_fn`, `GetItem`, or any closure is defined in your `zoo.py`, pickle stores `your_zoo_source.SomeClass`. The worker `import`s that path, fails, and dies before your code runs.
 
-If you don't need custom picklable objects, use FiftyOne's own classes. This approach works on all platforms with any `num_workers` value.
+Principle: **Worker-pickle constraint** — anything crossing the worker boundary must resolve to a module the worker can import.
 
-### collate_fn — Inherit, Don't Override
+## 3. The right answer
 
-`TorchModelMixin` provides `collate_fn` as a `@staticmethod` that returns `batch` as-is. It's defined in `fiftyone.core.models` — always importable by workers.
+Use what the framework already provides. Both pickle to modules workers can always import.
+
+| Need | Use | Pickles to |
+|---|---|---|
+| Collate | `TorchModelMixin.collate_fn` (inherit, don't override) | `fiftyone.core.models` |
+| Per-sample loading | `fiftyone.utils.torch.ImageGetItem(raw_inputs=True)` | `fiftyone.utils.torch` |
 
 ```python
-# Inherit from TorchModelMixin — works on all platforms
+from fiftyone.utils.torch import ImageGetItem
+
 @property
 def has_collate_fn(self) -> bool:
-    return True
-# collate_fn is inherited — do NOT define it
-```
+    return True   # framework-first: inherit collate_fn from TorchModelMixin
 
-### GetItem — Use FiftyOne's ImageGetItem
-
-`fiftyone.utils.torch.ImageGetItem` is a concrete `GetItem` subclass that loads images from filepaths. With `raw_inputs=True`, it returns PIL Images directly. Workers can always import it.
-
-```python
-# Uses fiftyone's class — works on all platforms
 def build_get_item(self, field_mapping=None) -> ImageGetItem:
     return ImageGetItem(field_mapping=field_mapping, raw_inputs=True)
 ```
 
-## Option B: Custom Classes (requires platform-aware num_workers)
+Principle: **Framework-first** — use FiftyOne's existing classes before defining your own.
 
-Custom `collate_fn` and `GetItem` subclasses defined in `zoo.py` are viable when paired with the platform-aware `num_workers` pattern above. On macOS, `num_workers=0` avoids pickling entirely; on other platforms, workers can import the module normally.
+## 4. Why `num_workers=0` is not the fix
 
-```python
-# Custom collate_fn — works on Linux/Windows with workers, macOS with num_workers=0
-def _my_collate(batch):
-    # custom batching logic
-    return batch
+It removes worker pickling entirely. Multi-worker is **non-negotiable**: production-scale datasets require it for I/O parallelism. A zoo source that requires `num_workers=0` is broken, not "tradeoff-configured." Validate with default `num_workers` on macOS before shipping.
 
-@property
-def collate_fn(self):
-    return _my_collate
+## 5. Why reference implementations may be wrong
 
-# Custom GetItem — works on Linux/Windows with workers, macOS with num_workers=0
-class MyGetItem(GetItem):
-    def __call__(self, d):
-        return {"filepath": d["filepath"]}
+Several widely-copied remote zoo sources define nested-closure collate functions or custom `GetItem` subclasses inline in `zoo.py`. They run on Linux fork-workers and silently break on macOS spawn-workers. Copying them propagates the bug.
 
-def build_get_item(self, field_mapping=None):
-    return MyGetItem(field_mapping=field_mapping)
-```
+Verification: run `dataset.apply_model(model)` with **default** `num_workers` on macOS before treating any reference as a template.
 
-**Important:** If using custom classes, you MUST use the platform-aware `num_workers` pattern in your `apply_model()` call, or macOS users will hit `ModuleNotFoundError`.
+Principle: **Reference implementations need verification.**
 
-## How FiftyOne Dispatches apply_model
+## 6. Wrong fixes that look right
 
-```
-apply_model(model, ...)
-│
-├─ isinstance(model, (SupportsGetItem, TorchModelMixin))?
-│  YES → _apply_image_model_data_loader()   ← multi-worker DataLoader path
-│  │     Creates DataLoader with num_workers, pickles GetItem + collate_fn
-│  │     Calls model.predict_all(batch, samples=sample_batch)
-│  │
-│  NO, batch_size provided?
-│     YES → _apply_image_model_batch()      ← batch path, no DataLoader
-│     │     Calls model.predict_all([filepaths], samples=batch)
-│     │
-│     NO → _apply_image_model_single()       ← simple path
-│          Calls model.predict(filepath, sample=sample) per sample
-```
+Preserved so the next agent does not re-walk the journey.
+
+- **Module-level helper with `__module__` reassigned to your zoo source** — workers still cannot import your zoo source.
+- **Nested closure inside a property** — closures are unpicklable; raises `PicklingError` immediately.
+- **Custom `__reduce__` returning a string-encoded `lambda`** — fragile, opaque, and breaks again on the next pickle protocol.
+- **`PYTHONPATH` injection from `__init__.py`** — mutates global interpreter state on import; affects unrelated code; still racy with already-spawned workers.
+
+The only correct fix is Section 3.
