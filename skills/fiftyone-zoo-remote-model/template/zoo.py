@@ -15,6 +15,7 @@ class YourModelConfig(fout.TorchImageModelConfig):
             d["raw_inputs"] = True
         super().__init__(d)
         self.model_path = self.parse_string(d, "model_path", default="org/your-model")
+        self.model_name = d.get("model_name")
 
 
 # framework-first: do not subclass GetItem (use ImageGetItem)

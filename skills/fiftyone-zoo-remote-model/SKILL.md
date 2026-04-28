@@ -46,7 +46,16 @@ Copy `template/`:
 - [ ] `dataset.apply_model(model)` runs with default `num_workers`.
 - [ ] On macOS: no `ModuleNotFoundError` from workers.
 
-On failure, see [DEBUGGING-PRINCIPLES.md](references/DEBUGGING-PRINCIPLES.md).
+**On failure**, route by symptom:
+
+| Symptom | First look at |
+|---|---|
+| Registration "succeeds" but `load_zoo_model` fails | [MANIFEST.md](references/MANIFEST.md), [MODEL-CLASS.md](references/MODEL-CLASS.md) |
+| `ModuleNotFoundError` / pickle error from workers | [DATALOADER.md](references/DATALOADER.md) |
+| Predictions in unexpected fields or not stored | [LABEL-TYPES.md](references/LABEL-TYPES.md) |
+| Spatial outputs (boxes/points) in wrong location | [LABEL-TYPES.md](references/LABEL-TYPES.md); VLM: [VLM-PATTERNS.md](references/VLM-PATTERNS.md) |
+| Output is schema-correct but values are wrong | [DEBUGGING-PRINCIPLES.md](references/DEBUGGING-PRINCIPLES.md) — *Schema compliance ≠ correctness* |
+| Backend / device error (OOM, op unimplemented) | [DEBUGGING-PRINCIPLES.md](references/DEBUGGING-PRINCIPLES.md) — *Document upstream constraints* |
 
 ## Universal principles
 

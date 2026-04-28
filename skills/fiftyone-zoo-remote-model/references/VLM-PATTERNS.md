@@ -63,12 +63,16 @@ a model-specific knee.
 
 Some VLMs emit custom tokens that mark structure (tool-call start/end,
 string delimiters, coordinate markers). Decoding with
-`skip_special_tokens=True` strips them and silently breaks downstream parsing
-— the parser sees a flattened string with no structure.
+`skip_special_tokens=True` strips them and silently breaks downstream parsing.
 
-- Decode with `skip_special_tokens=False`.
-- Rely on the processor's `parse_response` (or equivalent helper) to interpret
-  the special tokens, rather than rolling your own splitter.
+- Decode with `skip_special_tokens=False` to preserve markers.
+- A few model families ship a typed structured-output decoder (e.g., Gemma's
+  `processor.parse_response`, Florence-2's `processor.post_process_generation`).
+  Use it when present.
+- Most VLMs (Qwen-VL, LLaVA, Idefics, Molmo, etc.) ship only
+  `processor.batch_decode()` and require model-specific parsing of the decoded
+  text — `json.loads`, regex, or XML extraction against the model's documented
+  output spec. Do not assume a helper exists.
 
 ## 7. Multi-tier parser fallback pattern
 
@@ -76,9 +80,12 @@ VLMs sometimes emit slightly malformed structured output. A robust pattern:
 
 | Tier | Parser | Role |
 |------|--------|------|
-| 1 | `processor.parse_response` (or equivalent) | Official path; trust first. |
-| 2 | Custom parser | Handles the few common malformations only. |
+| 1 | Model-specific processor helper, if shipped (e.g., Gemma's `parse_response`) | Trust the typed output. |
+| 2 | Custom parser over `batch_decode` text | Handles the few common malformations only. |
 | 3 | Plain decode | Return empty / raw text; do not invent structure. |
+
+If your model has no tier-1 helper, tier 2 *is* your primary path — write it
+against the model's documented output format, not from observed samples.
 
 Bound tier 2 by the **Bounded repair scope** principle (see
 `DEBUGGING-PRINCIPLES.md`): repair the few most common malformations and stop.
