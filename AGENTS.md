@@ -159,6 +159,36 @@ This repository contains skills for computer vision workflows using FiftyOne and
 - `PYTHON-PANEL.md` - Python panel development
 - `JAVASCRIPT-PANEL.md` - JavaScript/React panel development
 
+### FiftyOne Zoo Remote Model (`fiftyone-zoo-remote-model/`)
+
+**When to use:** User wants to integrate a model into FiftyOne's remote model zoo (detection, classification, segmentation, embedding, keypoint, or vision-language / VLM models loaded via `register_zoo_model_source` and `load_zoo_model`, then applied with `dataset.apply_model`). Also for debugging zoo registration, `manifest.json` issues, custom `fom.Model` / `TorchModelMixin` subclasses, DataLoader pickle errors, or `ModuleNotFoundError` from spawned DataLoader workers.
+
+**Instructions:** Load the skill file at `skills/fiftyone-zoo-remote-model/SKILL.md`
+
+**Key requirements:**
+- FiftyOne installed
+- Model framework dependencies (e.g., `torch`, `transformers`, `accelerate`)
+- Test on macOS with default `num_workers` to surface spawn-worker DataLoader bugs
+
+**Workflow summary (4 phases):**
+1. Phase 0 — Confirm integration surface (zoo model vs plugin / operator / brain method)
+2. Phase 1 — Scaffold from `template/` (3-file structure: `manifest.json`, `__init__.py`, `zoo.py`)
+3. Phase 2 — Implement (class hierarchy, predict dispatch, label types, DataLoader; VLMs also load `VLM-PATTERNS.md`)
+4. Phase 3 — Validate (manifest `name`, relative imports, single `fo.Label` return, known-example coordinate check, multi-worker `apply_model` on macOS)
+
+**Reference files:**
+- `MANIFEST.md` — manifest schema and entry-point signatures
+- `MODEL-CLASS.md` — class hierarchy, properties, three-input predict dispatch
+- `DATALOADER.md` — worker pickle constraints, framework primitives, wrong fixes that look right
+- `LABEL-TYPES.md` — return types and coordinate normalization
+- `DEBUGGING-PRINCIPLES.md` — six universal principles with failure modes and diagnostic moves
+- `VLM-PATTERNS.md` — tool calling, generation budget, thinking, vision tokens, delimiters, multi-tier parser, coordinate quirks
+
+**Template files:**
+- `template/manifest.json` — minimal valid manifest skeleton
+- `template/__init__.py` — entry-point stubs aligned with FiftyOne SDK contract
+- `template/zoo.py` — config + model class skeleton (pickle-safe, no inference)
+
 ### FiftyOne Code Style (`fiftyone-code-style/`)
 
 **When to use:** User wants to write Python code following FiftyOne conventions, contribute to FiftyOne, or ensure code matches FiftyOne's style.
