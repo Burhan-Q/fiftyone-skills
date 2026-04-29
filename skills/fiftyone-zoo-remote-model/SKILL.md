@@ -57,14 +57,16 @@ Copy `template/`:
 | Output is schema-correct but values are wrong | [DEBUGGING-PRINCIPLES.md](references/DEBUGGING-PRINCIPLES.md) — *Schema compliance ≠ correctness* |
 | Backend / device error (OOM, op unimplemented) | [DEBUGGING-PRINCIPLES.md](references/DEBUGGING-PRINCIPLES.md) — *Document upstream constraints* |
 
-## Universal principles
+## Key Directives
 
-- **Framework-first.** Use FiftyOne's existing classes before defining your own. Why: framework classes resolve to importable modules; replacements re-introduce solved problems.
-- **Worker-pickle constraint.** Objects pickled across a DataLoader worker boundary must resolve to a module the worker can import. Why: remote zoo sources load via `importlib.util.spec_from_file_location` and are not on `sys.path` of spawned workers.
-- **Reference implementations need verification.** A pattern copied from another zoo source is not guaranteed correct. Why: at least one widely-copied VLM reference silently breaks under multi-worker.
-- **Schema compliance ≠ correctness.** A schema-conforming model is not necessarily producing correct values. Why: schema-following models echo your wrong field names back at you.
-- **Read specs, don't patch parsers.** When a parser keeps breaking, find the format spec before iterating. Why: each patch shifts the failure to a different malformation; the cycle is unbounded.
-- **Bounded repair scope.** Repair the few common malformations and stop. Why: unbounded repair masks model-quality regressions.
+Canonical names; other files cite by name. Full failure modes and diagnostic moves in [DEBUGGING-PRINCIPLES.md](references/DEBUGGING-PRINCIPLES.md).
+
+- **Framework-first.** ALWAYS use FiftyOne primitives before custom code. *Why:* framework classes are worker-importable; yours aren't.
+- **Worker-pickle constraint.** NEVER define pickle-bound objects in `zoo.py`. *Why:* spawned DataLoader workers can't import modules loaded via `importlib.util.spec_from_file_location`.
+- **Reference implementations need verification.** NEVER copy a pattern from another zoo source without running it under multi-worker first. *Why:* widely-copied references silently break.
+- **Schema compliance ≠ correctness.** NEVER trust schema-conformant outputs as proof of correctness. *Why:* models echo your wrong field names back unchanged.
+- **Read specs, don't patch parsers.** NEVER patch a parser more than twice — find the format spec. *Why:* each patch shifts the failure elsewhere; the cycle is unbounded.
+- **Bounded repair scope.** NEVER grow repair logic past a few common malformations. *Why:* unbounded repair masks model-quality regressions.
 
 ## Quick reference index
 
