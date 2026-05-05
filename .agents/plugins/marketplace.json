@@ -8,8 +8,7 @@
       "name": "fiftyone-skills",
       "source": {
         "source": "url",
-        "url": "https://github.com/Burhan-Q/fiftyone-skills.git",
-        "ref": "codex-plugin"
+        "url": "https://github.com/voxel51/fiftyone-skills.git"
       },
       "policy": {
         "installation": "AVAILABLE",
