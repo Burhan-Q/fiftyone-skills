@@ -8,7 +8,7 @@
       "name": "fiftyone-skills",
       "source": {
         "source": "local",
-        "./plugins/fiftyone-skills"
+        "path": "./plugins/fiftyone-skills"
       },
       "policy": {
         "installation": "AVAILABLE",
