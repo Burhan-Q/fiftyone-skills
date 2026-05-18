@@ -68,11 +68,12 @@ class YourModel(fom.Model, fom.SamplesMixin, SupportsGetItem, TorchModelMixin):
 
     def predict_all(self, args: list, samples: list | None = None) -> list:
         # schema compliance ≠ correctness: verify outputs against ground-truth examples
+        # dataset.apply_model always yields PIL.Image (DataLoader path); the dict
+        # branch is an optional VLM convenience for direct model.predict({...}) —
+        # drop it if you don't expose that user-facing API.
         for item in args:
             if isinstance(item, dict):
-                pass  # {"filepath"|"image": ..., "prompt": ...}
-            elif isinstance(item, str):
-                pass  # filepath
+                pass  # VLM direct invocation: {"image": PIL.Image, "prompt": str}
             else:
-                pass  # PIL.Image
+                pass  # PIL.Image — normal dataset.apply_model path
         raise NotImplementedError("Run inference and return list[fo.Label].")
