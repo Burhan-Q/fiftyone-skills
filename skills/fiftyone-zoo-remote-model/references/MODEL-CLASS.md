@@ -60,33 +60,43 @@ class MyBaseModel(fom.Model, fom.SamplesMixin, SupportsGetItem, TorchModelMixin)
         return ImageGetItem(field_mapping=field_mapping, raw_inputs=True)
 ```
 
-## predict / predict_all — three input types
+## predict / predict_all — input dispatch
 
-FiftyOne calls `predict` from three different code paths. **All three must be handled** or the model breaks on one invocation shape:
+**FiftyOne always passes `PIL.Image` to `predict_all`** when the model inherits `SupportsGetItem` and/or `TorchModelMixin`. Every framework call site loads the image before calling the model:
 
-| Source | Type | Where from |
-|--------|------|-----------|
-| DataLoader (multi-worker) | `PIL.Image` | `ImageGetItem(raw_inputs=True)` |
-| Single-sample path | `str` (filepath) | `_apply_image_model_single` |
-| Direct API | `dict` | User code calling `model.predict({...})` |
+| Framework path | Source of input | Where (`fiftyone/core/models.py`) |
+|---|---|---|
+| `_apply_image_model_data_loader` (DataLoader) | `ImageGetItem(raw_inputs=True)` → `PIL.Image` | dispatch lines 184–191; call lines 498–502 |
+| `_apply_image_model_single` (fallback) | `foui.read(sample.filepath)` → `PIL.Image` | line 372, then `model.predict(img)` line 375 |
+| `_apply_image_model_batch` (fallback batch) | `foui.read(...)` → list of `PIL.Image` | line 417, then `model.predict_all(imgs)` line 420 |
+| `_apply_image_model_to_frames_*` (video frames) | numpy frame array from `FFmpegVideoReader` | line 566, line 672 |
 
-Dispatch on `isinstance`:
+The `Model.predict_all` contract (`fiftyone/core/models.py:2365`) lists "uint8 numpy arrays (HWC) or numpy array tensors (NHWC)". `TorchImageModel.predict_all` (`fiftyone/utils/torch.py:873`) lists "PIL images, uint8 numpy arrays, Torch tensors". Neither mentions `str`. A structural search across `fiftyone/utils/*.py` finds **zero** `isinstance(_, str)` dispatch inside any `predict` / `predict_all` — no first-party model accepts a filepath string.
+
+**Implication:** the template only needs the `PIL.Image` branch. A `str` (filepath) branch is dead code — `dataset.apply_model` never produces it and no first-party model contract supports it.
+
+For non-VLM models the body is trivial — accept the image directly:
 
 ```python
 def predict(self, arg, sample=None):
     return self.predict_all([arg], samples=[sample] if sample else None)[0]
 
 def predict_all(self, batch, samples=None):
+    return [self._run_inference(image) for image in batch]
+```
+
+**VLM exception — optional `dict` input.** For VLMs you often want per-item prompts. `apply_model` does not produce dicts either (the DataLoader still yields `PIL.Image`), so a dict shape is purely a *direct-invocation convenience* for users calling `model.predict({"image": img, "prompt": "..."})` outside the framework. If you want to expose that, branch on `isinstance(item, dict)` and fall through otherwise:
+
+```python
+def predict_all(self, batch, samples=None):
     results = []
     for i, item in enumerate(batch):
         sample = samples[i] if samples and i < len(samples) else None
         if isinstance(item, dict):
-            image = item.get("filepath", item.get("image"))
+            image = item.get("image") or item.get("filepath")
             prompt = item.get("prompt")
-        elif isinstance(item, str):
-            image, prompt = item, None     # filepath
         else:
-            image, prompt = item, None     # PIL Image
+            image, prompt = item, None     # PIL.Image (DataLoader path)
 
         if prompt is None and sample and "prompt_field" in self._fields:
             fn = self._fields["prompt_field"]
@@ -96,3 +106,5 @@ def predict_all(self, batch, samples=None):
         results.append(self._run_inference(image, prompt))
     return results
 ```
+
+If you don't want the dict convenience, drop the `isinstance` check entirely and assume `PIL.Image`.

@@ -31,7 +31,7 @@ Copy `template/`:
 
 ## Phase 2 — Implement
 
-- Class hierarchy, properties, three-input predict dispatch → [MODEL-CLASS.md](references/MODEL-CLASS.md).
+- Class hierarchy, properties, predict/predict_all input dispatch → [MODEL-CLASS.md](references/MODEL-CLASS.md).
 - Label return types, single-`fo.Label` rule, coordinates → [LABEL-TYPES.md](references/LABEL-TYPES.md).
 - DataLoader pickle, worker import resolution → [DATALOADER.md](references/DATALOADER.md).
 - **VLM / generative-structured-output** (uses `generate()` with prompts/schemas) → also [VLM-PATTERNS.md](references/VLM-PATTERNS.md).
