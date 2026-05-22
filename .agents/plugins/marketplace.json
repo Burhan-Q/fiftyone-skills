@@ -1,0 +1,20 @@
+{
+  "name": "fiftyone-skills",
+  "interface": {
+    "displayName": "FiftyOne Skills"
+  },
+  "plugins": [
+    {
+      "name": "fiftyone-skills",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/voxel51/fiftyone-skills.git"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
