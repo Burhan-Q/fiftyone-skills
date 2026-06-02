@@ -60,6 +60,7 @@ Copy `template/`:
 
 Canonical names; other files cite by name. Full failure modes and diagnostic moves in [DEBUGGING-PRINCIPLES.md](references/DEBUGGING-PRINCIPLES.md).
 
+- **Runtime parameters are setters.** NEVER make users reconstruct the model to change a `generate()` / forward kwarg, a prompt, an operation selector, or a post-processing threshold. *Why:* weights are large; anything that feeds into `model(...)` is per-call input, not model identity.
 - **Framework-first.** ALWAYS use FiftyOne primitives before custom code. *Why:* framework classes are worker-importable; yours aren't.
 - **Worker-pickle constraint.** NEVER define pickle-bound objects in `zoo.py`. *Why:* spawned DataLoader workers can't import modules loaded via `importlib.util.spec_from_file_location`.
 - **Reference implementations need verification.** NEVER copy a pattern from another zoo source without running it under multi-worker first. *Why:* widely-copied references silently break.
