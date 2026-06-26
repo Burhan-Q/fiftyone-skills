@@ -135,6 +135,14 @@
       "emoji": "🧩",
       "category": "Development",
       "description": "Integrate models into FiftyOne's remote model zoo. Use when wrapping a model (detection, classification, segmentation, embedding, keypoint, or vision-language) for `register_zoo_model_source` and `load_zoo_model` so it works with `dataset.apply_model`, debugging zoo registration, fixing `manifest.json` issues, building custom `fom.Model` / `TorchModelMixin` subclasses, or resolving DataLoader pickle errors and `ModuleNotFoundError` from spawned multi-worker DataLoader workers."
+    },
+    {
+      "name": "fiftyone-app-playwright",
+      "source": "./skills/fiftyone-app-playwright",
+      "skills": "./",
+      "emoji": "🎭",
+      "category": "QA",
+      "description": "Drive the FiftyOne App via the Playwright MCP for operator/plugin verification, demo or screencast recording, and end-to-end UI automation against `fo.launch_app(...)`. Use when automating the FiftyOne App, recording an operator demo, or debugging a session that silently dies after a UI action (the `browser_navigate`-after-`reload_dataset` crash), covering launcher patterns (`remote=True`, trigger-file IPC), MUI input/dropdown gotchas, `data-cy` selectors, and scoped cleanup."
     }
   ]
 }

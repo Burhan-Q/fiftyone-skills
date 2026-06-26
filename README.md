@@ -60,6 +60,7 @@ Skills bridge the gap between natural language and FiftyOne's 80+ operators, pro
 | 🛡️ [**Eval Plugin**](skills/fiftyone-eval-plugin/SKILL.md) | Evaluate plugins for quality, security, and agent-readiness. Produces a structured report | — |
 | 🧩 [**Zoo Remote Model**](skills/fiftyone-zoo-remote-model/SKILL.md) | Build remote model zoo integrations that work with `register_zoo_model_source` and `dataset.apply_model` | — |
 | 🔌 [**Generate Data Lens Connector**](skills/fiftyone-generate-data-lens-connector/SKILL.md) | Generate a Data Lens connector from an external database schema (PostgreSQL, BigQuery, MySQL, etc.) | — |
+| 🎭 [**App Playwright**](skills/fiftyone-app-playwright/SKILL.md) | Drive the FiftyOne App via the Playwright MCP for operator/plugin verification, demos, and end-to-end UI automation | — |
 
 ## Quick Start
 

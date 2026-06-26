@@ -382,6 +382,27 @@ This repository contains skills for computer vision workflows using FiftyOne and
 4. Search closed issues/PRs for duplicates
 5. Categorize and generate response
 
+### FiftyOne App Playwright (`fiftyone-app-playwright/`)
+
+**When to use:** User wants to drive the FiftyOne App via the Playwright MCP — verify a plugin/operator end-to-end, record a demo or screencast, automate any UI flow against `fo.launch_app(...)`, or debug a session that silently dies after a UI action (the `browser_navigate`-after-`reload_dataset` crash).
+
+**Instructions:** Load the skill file at `skills/fiftyone-app-playwright/SKILL.md`
+
+**Key requirements:**
+- FiftyOne installed
+- Playwright MCP server connected to the agent
+- A live `fo.launch_app(..., remote=True)` session
+
+**Workflow summary:**
+1. Launch the App detached with the bundled `scripts/launch_app.py` (trigger-file refresh loop, non-persistent clone with a safe pre-delete guard)
+2. Connect Playwright to `http://localhost:<port>`; never `browser_navigate` / `location.reload()` after an operator calls `reload_dataset`
+3. Drive the React/MUI UI with `data-cy` selectors, controlled-input setters, and real clicks for comboboxes
+4. Refresh after mutations via the trigger file or the `reload_dataset` palette operator
+5. Clean up: kill the launcher, drop the non-persistent clone, remove only recent scoped output files
+
+**Bundled scripts:**
+- `scripts/launch_app.py` — parameterized launcher implementing the trigger-file refresh loop
+
 ## Prerequisites
 
 All skills require:
